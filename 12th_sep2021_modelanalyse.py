@@ -1,4 +1,9 @@
  #!/usr/bin/env python
+import logging
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("mylogger")
+#KILL_ALL = False
 print ("HANDLING IMPORTS...")
 import sys
 sys.path.append("..")
@@ -9,7 +14,7 @@ import operator
 import json
 from threading import Thread
 import copy
-import cv2
+#import cv2
 import numpy as np
 #import matplotlib.pyplot as plt
 import pyaudio
@@ -26,7 +31,7 @@ from collections import defaultdict
 from collections import Counter
 import pymongo
 from pymongo import MongoClient
-from utils import log
+#from utils import log
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["mydatabase"]
 import datetime
@@ -225,7 +230,7 @@ class STFT(DFTBase):
         fft_window = librosa.filters.get_window(window, win_length, fftbins=True)
 
         # Pad the window out to n_fft size
-        fft_window = librosa.util.pad_center(fft_window, n_fft)
+        fft_window = librosa.util.pad_center(fft_window, size=n_fft)
 
         # DFT & IDFT matrix
         self.W = self.dft_matrix(n_fft)
@@ -851,7 +856,7 @@ def analyzeStream(model,threshold,clip_threshold):
             y_pad = np.zeros(PERIOD * SR, dtype=np.float32)
             y_pad[:len(y_batch)] = y_batch
             audios.append(y_pad)
-            break
+            break 
         start = end
         end += PERIOD * SR
         audios.append(y_batch)
@@ -1056,12 +1061,12 @@ def showResults(data, max_results=8, min_score=0.01):
 def run():
 
     # Start recording
-    log.i(('STARTING RECORDING WORKER'))
+    log.info(('STARTING RECORDING WORKER'))
     recordWorker = Thread(target=record, args=())
     recordWorker.start()
 
     # Keep running...
-    log.i(('STARTING ANALYSIS'))
+    log.info(('STARTING ANALYSIS'))
     while not cfg.KILL_ALL:
 
         try:
@@ -1091,7 +1096,7 @@ def run():
             #cfg.KILL_ALL = True
 
     # Done
-    log.i(('TERMINATED'))
+    log.info(('TERMINATED'))
     
 if __name__ == '__main__':
 
