@@ -1056,20 +1056,27 @@ def showResults(data, max_results=8, min_score=0.01):
             #log.r(s, discard=True)
 
 
+def load_audio_file(file_path, target_sr=SR):
+    # Use librosa to load the audio file at the desired sample rate (SR)
+    audio, sr = librosa.load(file_path, sr=target_sr)
+    return audio
+
 
 #########################  MAIN  ###########################
-def run():
+def run(file_path):
 
     # Start recording
-    log.info(('STARTING RECORDING WORKER'))
-    recordWorker = Thread(target=record, args=())
-    recordWorker.start()
+    #log.info(('STARTING RECORDING WORKER'))
+    #recordWorker = Thread(target=record, args=())
+    #recordWorker.start()
 
     # Keep running...
     log.info(('STARTING ANALYSIS'))
     while not cfg.KILL_ALL:
 
-        try:
+        try:   
+            global FRAMES
+            FRAMES = load_audio_file(file_path, target_sr=SR)
 
             # Make prediction
             
@@ -1103,4 +1110,7 @@ if __name__ == '__main__':
     #load()
     #buildModel()
     #model=load_model()
-    run()
+    backend_directory = os.path.dirname(os.path.abspath(__file__))
+    recordings_directory = os.path.join(backend_directory, "recordings")
+    file_path = os.path.join(recordings_directory, "Recording (8).wav")
+    run(file_path)
