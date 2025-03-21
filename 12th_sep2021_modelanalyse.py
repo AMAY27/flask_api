@@ -903,7 +903,7 @@ def analyzeStream(model,threshold,clip_threshold):
             #else:
             pred = {'ClassName':AAL_CODE_dict[ci],'ClassName_German':AAL_CODE_dict_german[ci],'Datetime':st,'Datetime_2':st2,'Confidence':float(np.max(clipwise_outputs))}
             print(pred)
-            mycol.insert(pred)
+            mycol.insert_one(pred)
 
 
             label=AAL_CODE_dict_german[ci]
