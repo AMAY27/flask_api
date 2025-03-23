@@ -23,12 +23,13 @@ def analyze_recording(file_obj):
             audio.export(wav_file_path, format="wav")
         except Exception as e:
             # Clean up original file if conversion fails
-            os.remove(original_file_path)
-            raise e
+            print(f"Error processing file: {e}")
         finally:
             # Remove the original non-wav file
-            if os.path.exists(original_file_path):
+            try:
                 os.remove(original_file_path)
+            except PermissionError:
+                print(f"PermissionError: Unable to delete the file {original_file_path}")
     else:
         wav_file_path = original_file_path
     

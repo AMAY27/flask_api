@@ -757,7 +757,7 @@ PERIOD = 4
 SR = 44100
 
 TTA = 1
-list_of_models['model'] = get_model(list_of_models["model_class"], list_of_models["config"], list_of_models["weights_path"])
+#list_of_models['model'] = get_model(list_of_models["model_class"], list_of_models["config"], list_of_models["weights_path"])
 #####################################################################################################################################################################################
 
 def dt_local():
@@ -1113,4 +1113,5 @@ if __name__ == '__main__':
     backend_directory = os.path.dirname(os.path.abspath(__file__))
     recordings_directory = os.path.join(backend_directory, "recordings")
     file_path = os.path.join(recordings_directory, "Recording (8).wav")
+    list_of_models['model'] = get_model(list_of_models["model_class"], list_of_models["config"], list_of_models["weights_path"])
     run(file_path)
