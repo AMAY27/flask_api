@@ -22,7 +22,7 @@ import librosa
 from pathlib import Path
 import pandas as pd
 from scipy import  misc
-import config as cfg
+import model.config as cfg
 import pandas as pd
 import torch
 from fastprogress import progress_bar
@@ -828,106 +828,183 @@ def record():
             stream = openStream()
             continue
 
-def analyzeStream(model,threshold,clip_threshold):
+#def analyzeStream(model,threshold,clip_threshold):
+#
+#    global scnt
+#
+#    # Time
+#    start = time.time()
+#    
+#    clip = FRAMES.copy()
+#    if len(clip) < SR*4:
+#       clip=clip 
+#
+#    
+#    p_final={}
+#    p_finals={}
+#    spec_batch = []
+#    p_final={}
+#    audios = []
+#    y = clip.astype(np.float32)
+#    len_y = len(y)
+#    start = 0
+#    end = PERIOD * SR
+#    while True:
+#        
+#        y_batch = y[start:end].astype(np.float32)
+#        if len(y_batch) != PERIOD * SR:
+#            y_pad = np.zeros(PERIOD * SR, dtype=np.float32)
+#            y_pad[:len(y_batch)] = y_batch
+#            audios.append(y_pad)
+#            break 
+#        start = end
+#        end += PERIOD * SR
+#        audios.append(y_batch)
+#        
+#        
+#
+#        
+#    array = np.asarray(audios)
+#    tensors = torch.from_numpy(array)
+#    
+#    model.eval()
+#    global_time = 0.0
+#    
+#    for image in tensors:
+#
+#        image = image.unsqueeze(0).unsqueeze(0)
+#        image = image.expand(image.shape[0], TTA, image.shape[2])
+#        image = image.to(device)
+#        
+#        with torch.no_grad():
+#           prediction = model((image, None))
+#
+#           clipwise_outputs = prediction["clipwise_output"].detach(
+#                ).cpu().numpy()[0].mean(axis=0)
+#                
+#        
+#        
+#        clip_thresholded = clipwise_outputs >= clip_threshold
+#        clip_indices = np.argwhere(clip_thresholded).reshape(-1)
+#       
+#        st=dt_local()
+#        st2=dt_local_2()
+#
+#        for ci in clip_indices:
+#            #clip_codes.append(AAL_CODE_dict[ci])
+#            if ci==17:
+#               ci=40
+#            else:
+#               ci
+#               
+#         
+#
+#           
+#            #else:
+#            pred = {'ClassName':AAL_CODE_dict[ci],'ClassName_German':AAL_CODE_dict_german[ci],'Datetime':st,'Datetime_2':st2,'Confidence':float(np.max(clipwise_outputs))}
+#            print(pred)
+#            mycol.insert_one(pred)
+#
+#
+#            label=AAL_CODE_dict_german[ci]
+#            conf=np.max(clipwise_outputs)
+#        
+#            p_labels = {}
+#            p_labels[label] = AAL_CODE_dict_german[ci]
+#            p_sorted =  sorted(p_labels.items(), key=operator.itemgetter(1), reverse=True)
+#            for i in range(len(p_sorted)):
+#             label = p_sorted[i][0]
+#
+#        
+#             p_final[i] = {'species':label, 'score':str(float(np.max(clipwise_outputs))),'Datetime':st}
+#    
+#
+# 
+#   
+#    data = {'prediction': {}}
+#    data['prediction']['0'] = p_final
+#    
+#    #print (data)
+#    data['time'] = time.time() - start
+#    
+#    return data
 
-    global scnt
-
-    # Time
-    start = time.time()
+def analyzeStream(model, threshold, clip_threshold, period=PERIOD):
+    # Time: using a starting point of 0 seconds relative to the recording
+    start_time = time.time()
     
     clip = FRAMES.copy()
-    if len(clip) < SR*4:
-       clip=clip 
-
+    # No need to adjust the clip if it's shorter; we'll segment the entire clip.
     
-    p_final={}
-    p_finals={}
-    spec_batch = []
-    p_final={}
     audios = []
     y = clip.astype(np.float32)
-    len_y = len(y)
-    start = 0
-    end = PERIOD * SR
-    while True:
-        
-        y_batch = y[start:end].astype(np.float32)
-        if len(y_batch) != PERIOD * SR:
-            y_pad = np.zeros(PERIOD * SR, dtype=np.float32)
-            y_pad[:len(y_batch)] = y_batch
-            audios.append(y_pad)
-            break 
-        start = end
-        end += PERIOD * SR
-        audios.append(y_batch)
-        
-        
+    
+    seg_length = int(period * SR)
+    start_idx = 0
+    while start_idx < len(y):
+        end_idx = start_idx + seg_length
+        segment = y[start_idx: end_idx]
+        # Pad the last segment if needed
+        if len(segment) < seg_length:
+            pad_width = seg_length - len(segment)
+            segment = np.pad(segment, (0, pad_width), mode='constant')
+        audios.append(segment)
+        start_idx += seg_length
 
-        
     array = np.asarray(audios)
     tensors = torch.from_numpy(array)
     
     model.eval()
-    global_time = 0.0
+    
+    p_final = {}
+    segment_index = 0
+    
+    # Helper: format time in mm:ss
+    def format_time(seconds):
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes:02}:{secs:02}"
     
     for image in tensors:
-
         image = image.unsqueeze(0).unsqueeze(0)
         image = image.expand(image.shape[0], TTA, image.shape[2])
         image = image.to(device)
         
         with torch.no_grad():
-           prediction = model((image, None))
-
-           clipwise_outputs = prediction["clipwise_output"].detach(
-                ).cpu().numpy()[0].mean(axis=0)
-                
-        
+            prediction = model((image, None))
+            clipwise_outputs = prediction["clipwise_output"].detach().cpu().numpy()[0].mean(axis=0)
         
         clip_thresholded = clipwise_outputs >= clip_threshold
         clip_indices = np.argwhere(clip_thresholded).reshape(-1)
        
-        st=dt_local()
-        st2=dt_local_2()
-
+        # Compute the time offset for the current segment
+        time_offset = segment_index * period
+        timepoint_str = format_time(time_offset)
+       
         for ci in clip_indices:
-            #clip_codes.append(AAL_CODE_dict[ci])
-            if ci==17:
-               ci=40
-            else:
-               ci
-               
-         
-
-           
-            #else:
-            pred = {'ClassName':AAL_CODE_dict[ci],'ClassName_German':AAL_CODE_dict_german[ci],'Datetime':st,'Datetime_2':st2,'Confidence':float(np.max(clipwise_outputs))}
+            # Adjust class index if needed
+            if ci == 17:
+                ci = 40
+            pred = {
+                'ClassName': AAL_CODE_dict[ci],
+                'ClassName_German': AAL_CODE_dict_german[ci],
+                'timepoint': timepoint_str
+            }
             print(pred)
             mycol.insert_one(pred)
 
+            label = AAL_CODE_dict_german[ci]
+            p_final[f"{segment_index}_{ci}"] = {
+                'species': label,
+                'score': str(float(np.max(clipwise_outputs))),
+                'timepoint': timepoint_str
+            }
+        segment_index += 1
 
-            label=AAL_CODE_dict_german[ci]
-            conf=np.max(clipwise_outputs)
-        
-            p_labels = {}
-            p_labels[label] = AAL_CODE_dict_german[ci]
-            p_sorted =  sorted(p_labels.items(), key=operator.itemgetter(1), reverse=True)
-            for i in range(len(p_sorted)):
-             label = p_sorted[i][0]
-
-        
-             p_final[i] = {'species':label, 'score':str(float(np.max(clipwise_outputs))),'Datetime':st}
-    
-
- 
-   
-    data = {'prediction': {}}
-    data['prediction']['0'] = p_final
-    
-    #print (data)
-    data['time'] = time.time() - start
-    
+    data = {'prediction': {'0': p_final}}
+    data['time'] = time.time() - start_time  # or use recording duration if preferred
     return data
+
 
 
 
@@ -1072,35 +1149,33 @@ def run(file_path):
 
     # Keep running...
     log.info(('STARTING ANALYSIS'))
-    while not cfg.KILL_ALL:
 
-        try:   
-            global FRAMES
-            FRAMES = load_audio_file(file_path, target_sr=SR)
-
-            # Make prediction
-            
-            p = analyzeStream(model=list_of_models['model'],threshold=list_of_models["threshold"],clip_threshold=list_of_models["clip_threshold"])
-            data = resultPooling(p)
-
-            # Write analysis to file
-            with open('clo_analysis.json', 'w') as afile:
-                json.dump(data, afile)
-
-            # DEBUG: Show prediction
-            showResults(data)
-                        
-
-            # Sleep if we are too fast
-            if 'time_for_analysis' in p and p['time_for_analysis'] < 0.5:
-                #time.sleep(0.5 - p['time_for_analysis'])
-                 time.sleep(5)  
-        except KeyboardInterrupt:
-            cfg.KILL_ALL = True
-            break
-        #except:
-            #continue
-            #cfg.KILL_ALL = True
+    try:   
+        global FRAMES
+        FRAMES = load_audio_file(file_path, target_sr=SR)
+        # Make prediction
+        
+        p = analyzeStream(model=list_of_models['model'],threshold=list_of_models["threshold"],clip_threshold=list_of_models["clip_threshold"])
+        data = resultPooling(p)
+        # Write analysis to file
+        with open('clo_analysis.json', 'w') as afile:
+            json.dump(data, afile)
+        # DEBUG: Show prediction
+        showResults(data)
+                    
+        # Sleep if we are too fast
+        if 'time_for_analysis' in p and p['time_for_analysis'] < 0.5:
+            #time.sleep(0.5 - p['time_for_analysis'])
+             time.sleep(5)  
+    
+    except Exception as e:
+        log.error(f"Error during analysis: {e}")
+    #except KeyboardInterrupt:
+    #    cfg.KILL_ALL = True
+    #    break
+    #except:
+        #continue
+        #cfg.KILL_ALL = True
 
     # Done
     log.info(('TERMINATED'))
