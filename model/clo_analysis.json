@@ -1,1 +1,1 @@
-{"prediction": {"0": {"0": {"species": "SprechenderMann", "score": "0.6654176148074167"}, "1": {"species": "SprechendeFrau", "score": "0.4219388465959497"}}}, "time": 6.126991271972656, "counts": [["Zerbrechen", 120], ["SprechenderMann", 2], ["SprechendeFrau", 2]]}
+{"prediction": {"0": {"0": {"species": "Zerbrechen", "score": "0.8412844306668035"}}}, "time": 0.37688422203063965, "counts": [["Zerbrechen", 116], ["SprechenderMann", 4], ["SprechendeFrau", 4]]}
