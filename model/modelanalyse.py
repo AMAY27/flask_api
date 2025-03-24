@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +22,7 @@ import librosa
 from pathlib import Path
 import pandas as pd
 from scipy import  misc
-import model.config as cfg
+import config as cfg
 import pandas as pd
 import torch
 from fastprogress import progress_bar
@@ -747,7 +747,7 @@ list_of_models={
             "apply_aug": True,
             "top_db": None
         },
-        "weights_path": "final_5fold_sed_dense121_nomix_fold0_checkpoint_84_score=0.9421.pt",
+        "weights_path": "model/final_5fold_sed_dense121_nomix_fold0_checkpoint_84_score=0.9421.pt",  # Update this path
         "clip_threshold": 0.5,
         "threshold": 0.5
 }
@@ -1187,6 +1187,6 @@ if __name__ == '__main__':
     #model=load_model()
     backend_directory = os.path.dirname(os.path.abspath(__file__))
     recordings_directory = os.path.join(backend_directory, "recordings")
-    file_path = os.path.join(recordings_directory, "Recording (8).wav")
+    file_path = os.path.join(recordings_directory, "Recordingtest.wav")
     list_of_models['model'] = get_model(list_of_models["model_class"], list_of_models["config"], list_of_models["weights_path"])
     run(file_path)

@@ -1,10 +1,14 @@
 import os
 import tempfile
 import uuid
-from model.modelanalyse import run
+from model.modelanalyse import run, get_model, list_of_models
 from pydub import AudioSegment
 
 def analyze_recording(file_obj):
+    # Load the model
+    if 'model' not in list_of_models:
+        list_of_models['model'] = get_model(list_of_models["model_class"], list_of_models["config"], list_of_models["weights_path"])
+    
     # Determine the file extension from the uploaded filename
     original_ext = os.path.splitext(file_obj.filename)[1].lower()
     
