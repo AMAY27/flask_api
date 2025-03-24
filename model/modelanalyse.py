@@ -829,6 +829,11 @@ def record():
             continue
 
 def analyzeStream(model, threshold, clip_threshold, period=PERIOD, filename=None):
+    # Check if the audio file already exists in the database
+    audio_file = mycol.find_one({'filename': filename})
+    if audio_file:
+        raise FileExistsError(f"Audio file with filename '{filename}' already exists in the database.")
+    
     # Time: using a starting point of 0 seconds relative to the recording
     start_time = time.time()
     
@@ -1083,6 +1088,12 @@ def run(file_path, filename=None):
         if 'time_for_analysis' in p and p['time_for_analysis'] < 0.5:
             #time.sleep(0.5 - p['time_for_analysis'])
              time.sleep(5)  
+
+
+    except FileExistsError as fee:
+        log.error(f"FileExistsError: {fee}")
+        # Propagate or return the error message for your service layer to handle
+        return {"error": str(fee)}
     
     except Exception as e:
         log.error(f"Error during analysis: {e}")
