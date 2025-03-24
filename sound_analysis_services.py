@@ -11,6 +11,7 @@ def analyze_recording(file_obj):
     
     # Determine the file extension from the uploaded filename
     original_ext = os.path.splitext(file_obj.filename)[1].lower()
+    print(f"File path: {file_obj.filename}")
     
     # Define the recordings folder relative to this file's location
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +53,8 @@ def analyze_recording(file_obj):
     if wav_file_path and os.path.exists(wav_file_path):
         try:
             # Perform analysis on the WAV file
-            analysis_result = run(wav_file_path)
+            analysis_result = run(wav_file_path, filename=file_obj.filename)
+            print(f"Analysis result: {analysis_result}")
         except Exception as e:
             print(f"Error during analysis: {e}")
             analysis_result = {"error": str(e)}

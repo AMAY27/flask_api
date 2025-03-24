@@ -828,108 +828,7 @@ def record():
             stream = openStream()
             continue
 
-#def analyzeStream(model,threshold,clip_threshold):
-#
-#    global scnt
-#
-#    # Time
-#    start = time.time()
-#    
-#    clip = FRAMES.copy()
-#    if len(clip) < SR*4:
-#       clip=clip 
-#
-#    
-#    p_final={}
-#    p_finals={}
-#    spec_batch = []
-#    p_final={}
-#    audios = []
-#    y = clip.astype(np.float32)
-#    len_y = len(y)
-#    start = 0
-#    end = PERIOD * SR
-#    while True:
-#        
-#        y_batch = y[start:end].astype(np.float32)
-#        if len(y_batch) != PERIOD * SR:
-#            y_pad = np.zeros(PERIOD * SR, dtype=np.float32)
-#            y_pad[:len(y_batch)] = y_batch
-#            audios.append(y_pad)
-#            break 
-#        start = end
-#        end += PERIOD * SR
-#        audios.append(y_batch)
-#        
-#        
-#
-#        
-#    array = np.asarray(audios)
-#    tensors = torch.from_numpy(array)
-#    
-#    model.eval()
-#    global_time = 0.0
-#    
-#    for image in tensors:
-#
-#        image = image.unsqueeze(0).unsqueeze(0)
-#        image = image.expand(image.shape[0], TTA, image.shape[2])
-#        image = image.to(device)
-#        
-#        with torch.no_grad():
-#           prediction = model((image, None))
-#
-#           clipwise_outputs = prediction["clipwise_output"].detach(
-#                ).cpu().numpy()[0].mean(axis=0)
-#                
-#        
-#        
-#        clip_thresholded = clipwise_outputs >= clip_threshold
-#        clip_indices = np.argwhere(clip_thresholded).reshape(-1)
-#       
-#        st=dt_local()
-#        st2=dt_local_2()
-#
-#        for ci in clip_indices:
-#            #clip_codes.append(AAL_CODE_dict[ci])
-#            if ci==17:
-#               ci=40
-#            else:
-#               ci
-#               
-#         
-#
-#           
-#            #else:
-#            pred = {'ClassName':AAL_CODE_dict[ci],'ClassName_German':AAL_CODE_dict_german[ci],'Datetime':st,'Datetime_2':st2,'Confidence':float(np.max(clipwise_outputs))}
-#            print(pred)
-#            mycol.insert_one(pred)
-#
-#
-#            label=AAL_CODE_dict_german[ci]
-#            conf=np.max(clipwise_outputs)
-#        
-#            p_labels = {}
-#            p_labels[label] = AAL_CODE_dict_german[ci]
-#            p_sorted =  sorted(p_labels.items(), key=operator.itemgetter(1), reverse=True)
-#            for i in range(len(p_sorted)):
-#             label = p_sorted[i][0]
-#
-#        
-#             p_final[i] = {'species':label, 'score':str(float(np.max(clipwise_outputs))),'Datetime':st}
-#    
-#
-# 
-#   
-#    data = {'prediction': {}}
-#    data['prediction']['0'] = p_final
-#    
-#    #print (data)
-#    data['time'] = time.time() - start
-#    
-#    return data
-
-def analyzeStream(model, threshold, clip_threshold, period=PERIOD):
+def analyzeStream(model, threshold, clip_threshold, period=PERIOD, filename=None):
     # Time: using a starting point of 0 seconds relative to the recording
     start_time = time.time()
     
@@ -986,6 +885,7 @@ def analyzeStream(model, threshold, clip_threshold, period=PERIOD):
             if ci == 17:
                 ci = 40
             pred = {
+                'filename': filename,
                 'ClassName': AAL_CODE_dict[ci],
                 'ClassName_German': AAL_CODE_dict_german[ci],
                 'timepoint': timepoint_str
@@ -1003,7 +903,23 @@ def analyzeStream(model, threshold, clip_threshold, period=PERIOD):
 
     data = {'prediction': {'0': p_final}}
     data['time'] = time.time() - start_time  # or use recording duration if preferred
-    return data
+    #return data
+
+    # Query MongoDB for all records with the specified filename
+    records = list(mycol.find({'filename': filename}, {'_id': False}))  # Exclude _id from the response
+
+    class_counts = mycol.aggregate([
+        {'$match': {'filename': filename}},
+        {'$group': {'_id': '$ClassName', 'count': {'$sum': 1}}}
+    ])
+
+    # Format the results
+    result = {
+        'records': records,
+        'class_counts': {item['_id']: item['count'] for item in class_counts}
+    }
+
+    return result
 
 
 
@@ -1140,7 +1056,7 @@ def load_audio_file(file_path, target_sr=SR):
 
 
 #########################  MAIN  ###########################
-def run(file_path):
+def run(file_path, filename=None):
 
     # Start recording
     #log.info(('STARTING RECORDING WORKER'))
@@ -1155,7 +1071,7 @@ def run(file_path):
         FRAMES = load_audio_file(file_path, target_sr=SR)
         # Make prediction
         
-        p = analyzeStream(model=list_of_models['model'],threshold=list_of_models["threshold"],clip_threshold=list_of_models["clip_threshold"])
+        p = analyzeStream(model=list_of_models['model'],threshold=list_of_models["threshold"],clip_threshold=list_of_models["clip_threshold"],filename=filename)
         data = resultPooling(p)
         # Write analysis to file
         with open('clo_analysis.json', 'w') as afile:
@@ -1179,6 +1095,7 @@ def run(file_path):
 
     # Done
     log.info(('TERMINATED'))
+    return p
     
 if __name__ == '__main__':
 
