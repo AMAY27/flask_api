@@ -55,6 +55,9 @@ def analyze_recording(file_obj):
             # Perform analysis on the WAV file
             analysis_result = run(wav_file_path, filename=file_obj.filename)
             print(f"Analysis result: {analysis_result}")
+        except FileExistsError as fee:
+            print(f"File Exists error: {fee}")
+            analysis_result = {"error": str(fee)}
         except Exception as e:
             print(f"Error during analysis: {e}")
             analysis_result = {"error": str(e)}
@@ -63,7 +66,7 @@ def analyze_recording(file_obj):
             if os.path.exists(wav_file_path):
                 os.remove(wav_file_path)
         
-        return {"analysis": analysis_result}
+        return analysis_result
     else:
         return {"error": "File conversion failed or file does not exist"}
 
