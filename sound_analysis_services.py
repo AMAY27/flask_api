@@ -63,8 +63,8 @@ def analyze_recording(file_obj):
             analysis_result = {"error": str(e)}
         finally:
             # Delete the temporary WAV file whether or not the above steps succeed
-            #if os.path.exists(wav_file_path):
-            #    os.remove(wav_file_path)
+            if os.path.exists(wav_file_path):
+                os.remove(wav_file_path)
             print(f"Temporary WAV file deleted: {wav_file_path}")
         
         return analysis_result
