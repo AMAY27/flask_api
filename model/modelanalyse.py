@@ -1070,6 +1070,7 @@ def run(file_path, filename=None):
 
     # Keep running...
     log.info(('STARTING ANALYSIS'))
+    p = None
 
     try:   
         global FRAMES
