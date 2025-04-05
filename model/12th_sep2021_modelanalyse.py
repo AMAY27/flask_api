@@ -9,7 +9,7 @@ import operator
 import json
 from threading import Thread
 import copy
-import cv2
+#import cv2
 import numpy as np
 #import matplotlib.pyplot as plt
 import pyaudio
