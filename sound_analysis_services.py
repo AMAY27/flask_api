@@ -3,6 +3,7 @@ import tempfile
 import uuid
 from model.modelanalyse import run, get_model, list_of_models
 from pydub import AudioSegment
+#from flask_socketio import SocketIO, emit
 
 def analyze_recording(file_obj):
     # Load the model
@@ -70,4 +71,108 @@ def analyze_recording(file_obj):
         return analysis_result
     else:
         return {"error": "File conversion failed or file does not exist"}
+    
+
+# ------------------------
+# New Live Streaming Service
+# ------------------------
+# This new service processes live audio chunks without needing a file_obj.
+
+def analyze_live_chunk(file_path):
+    """
+    Processes a temporary audio file (from a live stream chunk), converts it to WAV if needed,
+    runs the analysis model, and returns the analysis result.
+    """
+    # Determine the file extension from the file path
+    original_ext = os.path.splitext(file_path)[1].lower()
+    print(f"Processing live file: {file_path}")
+    
+    # Define the recordings folder relative to this file's location
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    recordings_dir = os.path.join(base_dir, "model", "recordings")
+    os.makedirs(recordings_dir, exist_ok=True)
+    
+    # If the file is not in WAV format, convert it.
+    if original_ext != ".wav":
+        wav_filename = f"{uuid.uuid4()}.wav"
+        wav_file_path = os.path.join(recordings_dir, wav_filename)
+        try:
+            audio = AudioSegment.from_file(file_path, format=original_ext.replace('.', ''))
+            audio.export(wav_file_path, format="wav")
+            print(f"Live file converted to WAV: {wav_file_path}")
+        except Exception as e:
+            print(f"Error processing live file: {e}")
+            wav_file_path = None
+        finally:
+            # Remove the original temporary file
+            try:
+                os.remove(file_path)
+            except Exception as ex:
+                print(f"Error deleting original live file: {ex}")
+    else:
+        wav_file_path = file_path
+        print(f"Live file is already in WAV format: {wav_file_path}")
+    
+    if wav_file_path and os.path.exists(wav_file_path):
+        try:
+            # Perform analysis on the WAV file using your existing run() function.
+            analysis_result = run(wav_file_path, filename=os.path.basename(file_path))
+            print(f"Live analysis result: {analysis_result}")
+        except Exception as e:
+            print(f"Error during live analysis: {e}")
+            analysis_result = {"error": str(e)}
+        finally:
+            if os.path.exists(wav_file_path):
+                os.remove(wav_file_path)
+                print(f"Temporary live WAV file deleted: {wav_file_path}")
+        return analysis_result
+    else:
+        return {"error": "Live file conversion failed or file does not exist"}
+
+
+# ------------------------
+# Flask-SocketIO Setup for Live Streaming
+# ------------------------
+from flask_socketio import SocketIO, emit
+import base64
+import time
+
+# Create the SocketIO instance. (For a real application, consider initializing this in your main app.)
+socketio = SocketIO(cors_allowed_origins="*")
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+    emit('message', {'data': 'Connected to live streaming service'})
+
+@socketio.on('audio_chunk')
+def handle_audio_chunk(data):
+    """
+    Receives a base64-encoded audio chunk, writes it to a temporary file,
+    analyzes it using analyze_live_chunk, and emits detected events back.
+    """
+    audio_data = data.get('audio')
+    if audio_data:
+        # Decode the base64-encoded audio chunk.
+        audio_bytes = base64.b64decode(audio_data)
+        temp_filename = f"temp_{int(time.time()*1000)}.webm"
+        with open(temp_filename, "wb") as f:
+            f.write(audio_bytes)
+        try:
+            analysis_result = analyze_live_chunk(temp_filename)
+            # Assume analysis_result contains a key "records" with a list of detected events.
+            events = analysis_result.get('records', [])
+            emit('live_events', {'events': events})
+        except Exception as e:
+            print("Error analyzing live chunk:", e)
+            emit('live_events', {'error': str(e)})
+        finally:
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
+    else:
+        emit('live_events', {'error': 'No audio data received'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
 
