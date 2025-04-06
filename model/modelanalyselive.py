@@ -1,3 +1,7 @@
+import logging
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("mylogger")
  #!/usr/bin/env python
 print ("HANDLING IMPORTS...")
 import sys
@@ -26,7 +30,7 @@ from collections import defaultdict
 from collections import Counter
 import pymongo
 from pymongo import MongoClient
-from utils import log
+#from utils import log
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["mydatabase"]
 import datetime
@@ -225,7 +229,7 @@ class STFT(DFTBase):
         fft_window = librosa.filters.get_window(window, win_length, fftbins=True)
 
         # Pad the window out to n_fft size
-        fft_window = librosa.util.pad_center(fft_window, n_fft)
+        fft_window = librosa.util.pad_center(fft_window, size=n_fft)
 
         # DFT & IDFT matrix
         self.W = self.dft_matrix(n_fft)
@@ -742,7 +746,7 @@ list_of_models={
             "apply_aug": True,
             "top_db": None
         },
-        "weights_path": "final_5fold_sed_dense121_nomix_fold0_checkpoint_84_score=0.9421.pt",
+        "weights_path": "model/final_5fold_sed_dense121_nomix_fold0_checkpoint_84_score=0.9421.pt",
         "clip_threshold": 0.5,
         "threshold": 0.5
 }
@@ -1053,15 +1057,36 @@ def showResults(data, max_results=8, min_score=0.01):
 
 
 #########################  MAIN  ###########################
+def run_audio(audio_data, filename=None):
+    """
+    Processes audio data (numpy array) in memory and returns analysis result.
+    """
+    global FRAMES
+    FRAMES = audio_data  # Set global FRAMES from in-memory data
+    # Run your segmentation and model prediction logic
+    p = analyzeStream(
+        model=list_of_models['model'],
+        threshold=list_of_models["threshold"],
+        clip_threshold=list_of_models["clip_threshold"]
+    )
+    data = resultPooling(p)
+    # Optionally, write out the analysis file for debugging:
+    with open('clo_analysis.json', 'w') as afile:
+        json.dump(data, afile)
+    #showResults(data)
+    return data
+
+
+
 def run():
 
     # Start recording
-    log.i(('STARTING RECORDING WORKER'))
+    log.info(('STARTING RECORDING WORKER'))
     recordWorker = Thread(target=record, args=())
     recordWorker.start()
 
     # Keep running...
-    log.i(('STARTING ANALYSIS'))
+    log.info(('STARTING ANALYSIS'))
     while not cfg.KILL_ALL:
 
         try:
@@ -1091,7 +1116,7 @@ def run():
             #cfg.KILL_ALL = True
 
     # Done
-    log.i(('TERMINATED'))
+    log.info(('TERMINATED'))
     
 if __name__ == '__main__':
 
