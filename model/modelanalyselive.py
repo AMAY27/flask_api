@@ -1057,13 +1057,18 @@ def showResults(data, max_results=8, min_score=0.01):
 
 
 #########################  MAIN  ###########################
-def run_audio(audio_data, filename=None):
+def run_audio(audio_tuple, filename=None):
     """
     Processes audio data (numpy array) in memory and returns analysis result.
     """
     global FRAMES
-    FRAMES = audio_data  # Set global FRAMES from in-memory data
-    # Run your segmentation and model prediction logic
+    data, sr = audio_tuple
+
+    # If you ever care about sr, you could assert it matches your model:
+    # assert sr == list_of_models['config']['sample_rate']
+
+    # overwrite the global FRAMES buffer for analyzeStream
+    FRAMES = data.astype('float32')
     p = analyzeStream(
         model=list_of_models['model'],
         threshold=list_of_models["threshold"],
