@@ -81,49 +81,99 @@ def analyze_recording(file_obj):
 
 
 from io import BytesIO
+import numpy as np
+import soundfile as sf       
 
-def analyze_live_chunk_inmemory(audio_bytes, original_ext):
+
+list_of_models['model'] = get_model(
+    list_of_models["model_class"],
+    list_of_models["config"],
+    list_of_models["weights_path"]
+)
+
+def analyze_live_chunk_inmemory(chunk_bytes: bytes, original_ext: str):
     """
-    Processes an audio chunk in memory.
-    :param audio_bytes: The raw audio bytes (from the live chunk)
-    :param original_ext: Original extension (e.g. ".webm")
-    :return: Analysis result (dict)
+    :param chunk_bytes: the raw bytes from the browser
+    :param original_ext: '.wav' if your client is now sending WAV PCM,
+                         or '.pcm' if you choose to send raw Float32 PCM,
+                         otherwise e.g. '.webm' to fall back via pydub.
+    :returns: whatever run_audio(...) returns, or {'error': ...}
     """
-    # Ensure the model is loaded:
-    if 'model' not in list_of_models:
-        list_of_models['model'] = get_model(
-            list_of_models["model_class"],
-            list_of_models["config"],
-            list_of_models["weights_path"]
-        )
-    
-    # Use pydub to load the audio from the in-memory bytes:
-    audio_file = BytesIO(audio_bytes)
+
+    # 2) Branch on format
     try:
-        # pydub requires the format string without the dot
-        audio_segment = AudioSegment.from_file(audio_file, format=original_ext.replace('.', ''))
+        if original_ext == '.wav':
+            # read WAV directly into a numpy float32 array
+            data, sr = sf.read(BytesIO(chunk_bytes), dtype='float32')
+        elif original_ext == '.pcm':
+            # assume raw little‑endian float32 PCM
+            data = np.frombuffer(chunk_bytes, dtype='float32')
+            sr = list_of_models['config']['sample_rate']
+        else:
+            # fallback: use pydub to decode (e.g. WebM/Opus → WAV)
+            audio_seg = AudioSegment.from_file(
+                BytesIO(chunk_bytes),
+                format=original_ext.lstrip('.')
+            )
+            wav_io = BytesIO()
+            audio_seg.export(wav_io, format='wav')
+            wav_io.seek(0)
+            data, sr = sf.read(wav_io, dtype='float32')
     except Exception as e:
-        print(f"Error processing audio segment in memory: {e}")
-        return {"error": str(e)}
-    
-    # Export to WAV in memory:
-    wav_io = BytesIO()
+        print(f"Error decoding chunk (.{original_ext}): {e}")
+        return {'error': str(e)}
+
+    # 3) Now `data` is a 1‑D float32 numpy array at sampling rate `sr`.
+    #    You can pass (data, sr) straight into your existing run_audio helper.
     try:
-        audio_segment.export(wav_io, format="wav")
+        return run_audio((data, sr), filename="inmemory_chunk")
     except Exception as e:
-        print(f"Error exporting to WAV in memory: {e}")
-        return {"error": str(e)}
-    wav_io.seek(0)
-    
-    try:
-        # Load the WAV data using librosa (using soundfile under the hood)
-        y = librosa.load(wav_io)
-    except Exception as e:
-        print(f"Error loading audio from in-memory WAV file: {e}")
-        return {"error": str(e)}
-    
-    # Now run the analysis on the in-memory audio data.
-    return run_audio(y, filename="inmemory_chunk")
+        print(f"Error running model on in‑memory array: {e}")
+        return {'error': str(e)}
+
+
+#def analyze_live_chunk_inmemory(audio_bytes, original_ext):
+#    """
+#    Processes an audio chunk in memory.
+#    :param audio_bytes: The raw audio bytes (from the live chunk)
+#    :param original_ext: Original extension (e.g. ".webm")
+#    :return: Analysis result (dict)
+#    """
+#    # Ensure the model is loaded:
+#    #if 'model' not in list_of_models:
+#    #    list_of_models['model'] = get_model(
+#    #        list_of_models["model_class"],
+#    #        list_of_models["config"],
+#    #        list_of_models["weights_path"]
+#    #    )
+#    
+#    # Use pydub to load the audio from the in-memory bytes:
+#    audio_file = BytesIO(audio_bytes)
+#    try:
+#        # pydub requires the format string without the dot
+#        audio_segment = AudioSegment.from_file(audio_file, format=original_ext.replace('.', ''))
+#    except Exception as e:
+#        print(f"Error processing audio segment in memory: {e}")
+#        return {"error": str(e)}
+#    
+#    # Export to WAV in memory:
+#    wav_io = BytesIO()
+#    try:
+#        audio_segment.export(wav_io, format="wav")
+#    except Exception as e:
+#        print(f"Error exporting to WAV in memory: {e}")
+#        return {"error": str(e)}
+#    wav_io.seek(0)
+#    
+#    try:
+#        # Load the WAV data using librosa (using soundfile under the hood)
+#        y = librosa.load(wav_io)
+#    except Exception as e:
+#        print(f"Error loading audio from in-memory WAV file: {e}")
+#        return {"error": str(e)}
+#    
+#    # Now run the analysis on the in-memory audio data.
+#    return run_audio(y, filename="inmemory_chunk")
 
 
 def analyze_live_chunk(file_path):
