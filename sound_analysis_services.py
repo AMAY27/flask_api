@@ -128,7 +128,7 @@ def analyze_live_chunk_inmemory(chunk_bytes: bytes, original_ext: str):
     try:
         return run_audio((data, sr), filename="inmemory_chunk")
     except Exception as e:
-        print(f"Error running model on in‑memory array: {e}")
+        print(f"Error running model on in-memory array: {e}")
         return {'error': str(e)}
 
 
@@ -226,6 +226,7 @@ def analyze_live_chunk(file_path):
         return analysis_result
     else:
         return {"error": "Live file conversion failed or file does not exist"}
+
 
 
 # ------------------------

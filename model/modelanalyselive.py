@@ -902,7 +902,7 @@ def analyzeStream(model,threshold,clip_threshold):
             #else:
             pred = {'ClassName':AAL_CODE_dict[ci],'ClassName_German':AAL_CODE_dict_german[ci],'Datetime':st,'Datetime_2':st2,'Confidence':float(np.max(clipwise_outputs))}
             print(pred)
-            mycol.insert(pred)
+            #mycol.insert_one(pred)
 
 
             label=AAL_CODE_dict_german[ci]
@@ -1061,25 +1061,36 @@ def run_audio(audio_tuple, filename=None):
     """
     Processes audio data (numpy array) in memory and returns analysis result.
     """
+    samples, sr = audio_tuple
+
+    # If the incoming sample rate differs, you could resample here.
+    # For now we assume sr == SR.
+    if sr != SR:
+        samples = librosa.resample(samples, orig_sr=sr, target_sr=SR)
+
+    # Feed into the global FRAMES buffer expected by analyzeStream:
     global FRAMES
-    data, sr = audio_tuple
-
-    # If you ever care about sr, you could assert it matches your model:
-    # assert sr == list_of_models['config']['sample_rate']
-
-    # overwrite the global FRAMES buffer for analyzeStream
-    FRAMES = data.astype('float32')
+    FRAMES = samples.astype(np.float32)
     p = analyzeStream(
         model=list_of_models['model'],
         threshold=list_of_models["threshold"],
         clip_threshold=list_of_models["clip_threshold"]
     )
     data = resultPooling(p)
+    events = []
+    for info in data['prediction']['0'].values():
+        events.append({
+            'species': info['species'],
+            'score': float(info['score']),
+            # if you have a timepoint field you can include it here
+        })
+
+    return {'events': events}
     # Optionally, write out the analysis file for debugging:
-    with open('clo_analysis.json', 'w') as afile:
-        json.dump(data, afile)
-    #showResults(data)
-    return data
+    #with open('clo_analysis.json', 'w') as afile:
+    #    json.dump(data, afile)
+    ##showResults(data)
+    #return data
 
 
 
