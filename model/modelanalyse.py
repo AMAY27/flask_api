@@ -32,9 +32,10 @@ from collections import Counter
 import pymongo
 from pymongo import MongoClient
 #from utils import log
+# mongodb://localhost:27017/
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["mydatabase"]
-import datetime
+import datetime 
 
 mycol = mydb["25thjan2024"]
 
