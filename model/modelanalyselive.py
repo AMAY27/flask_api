@@ -889,6 +889,7 @@ def analyzeStream(model,threshold,clip_threshold):
         st=dt_local()
         st2=dt_local_2()
 
+
         for ci in clip_indices:
             #clip_codes.append(AAL_CODE_dict[ci])
             if ci==17:
@@ -901,8 +902,7 @@ def analyzeStream(model,threshold,clip_threshold):
            
             #else:
             pred = {'ClassName':AAL_CODE_dict[ci],'ClassName_German':AAL_CODE_dict_german[ci],'Datetime':st,'Datetime_2':st2,'Confidence':float(np.max(clipwise_outputs))}
-            print(pred)
-            #mycol.insert_one(pred)
+            mycol.insert_one(pred)
 
 
             label=AAL_CODE_dict_german[ci]
@@ -915,20 +915,67 @@ def analyzeStream(model,threshold,clip_threshold):
              label = p_sorted[i][0]
 
         
-             p_final[i] = {'species':label, 'score':str(float(np.max(clipwise_outputs))),'Datetime':st}
+             p_final[i] = {'species':label, 'score':str(float(np.max(clipwise_outputs)))}
     
 
  
    
     data = {'prediction': {}}
     data['prediction']['0'] = p_final
-    
     #print (data)
     data['time'] = time.time() - start
-    
     return data
 
 
+
+def analyzeStreamForClientSoundStream(model, threshold, clip_threshold):
+    """
+    Assumes FRAMES is your global rolling buffer of raw float32 samples.
+    Returns a list of pred dicts:
+      {ClassName, ClassName_German, Datetime, Datetime_2, Confidence}
+    """
+    # 1) Grab exactly the last 4s of audio (PAD if too short)
+    clip = FRAMES.copy()  
+    # ensure it's at least PERIOD long
+    if clip.shape[0] < SR * PERIOD:
+        clip = np.pad(clip, (0, SR * PERIOD - clip.shape[0]), mode="constant")
+
+    audios = []
+    y = clip.astype(np.float32)
+    start, end = 0, PERIOD * SR
+    while start < y.shape[0]:
+        chunk = y[start:end]
+        if chunk.shape[0] < PERIOD * SR:
+            chunk = np.pad(chunk, (0, PERIOD * SR - chunk.shape[0]), mode="constant")
+        audios.append(chunk)
+        start, end = end, end + PERIOD * SR
+
+    batch = torch.from_numpy(np.stack(audios))  # shape (N=1, L)
+    preds = []
+
+    for audio in batch:
+        x = audio.unsqueeze(0).unsqueeze(0).expand(1, TTA, audio.shape[-1]).to(device)
+        with torch.no_grad():
+            out = model((x, None))
+        clipwise = out["clipwise_output"].cpu().numpy()[0].mean(axis=0)
+        hits = np.where(clipwise >= clip_threshold)[0]
+        ts = dt_local()
+        ts2 = dt_local_2()
+
+        for ci in hits:
+            if ci == 17:  # your special remap
+                ci = 40
+            pred = {
+                "ClassName":          AAL_CODE_dict[ci],
+                "ClassName_German":   AAL_CODE_dict_german[ci],
+                "Datetime":           ts,
+                "Datetime_2":         ts2,
+                "Confidence":         float(clipwise[ci]),
+            }
+            preds.append(pred)
+            # optional: persist
+
+    return preds
 
 def resultPooling(data):
 
@@ -1071,21 +1118,22 @@ def run_audio(audio_tuple, filename=None):
     # Feed into the global FRAMES buffer expected by analyzeStream:
     global FRAMES
     FRAMES = samples.astype(np.float32)
-    p = analyzeStream(
+    preds = analyzeStreamForClientSoundStream(
         model=list_of_models['model'],
         threshold=list_of_models["threshold"],
         clip_threshold=list_of_models["clip_threshold"]
     )
-    data = resultPooling(p)
-    events = []
-    for info in data['prediction']['0'].values():
-        events.append({
-            'species': info['species'],
-            'score': float(info['score']),
-            # if you have a timepoint field you can include it here
-        })
+    #data = resultPooling(p)
+    #events = []
+    #for info in data['prediction']['0'].values():
+    #    events.append({
+    #        'species': info['species'],
+    #        'score': float(info['score']),
+    #        'datetime': info['Datetime'],
+    #        # if you have a timepoint field you can include it here
+    #    })
 
-    return {'events': events}
+    return {'events': preds}
     # Optionally, write out the analysis file for debugging:
     #with open('clo_analysis.json', 'w') as afile:
     #    json.dump(data, afile)
