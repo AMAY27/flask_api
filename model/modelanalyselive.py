@@ -31,11 +31,11 @@ from collections import Counter
 import pymongo
 from pymongo import MongoClient
 #from utils import log
-myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-mydb = myclient["mydatabase"]
+#myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+#mydb = myclient["mydatabase"]
 import datetime
-
-mycol = mydb["25thjan2024"]
+#
+#mycol = mydb["25thjan2024"]
 
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
@@ -763,7 +763,7 @@ def dt_local():
     
     now = time.time()
        
-    st = datetime.datetime.fromtimestamp(now).strftime("%Y-%m-%d %I:%M:%S %p")
+    st = datetime.datetime.fromtimestamp(now).strftime("%Y-%m-%d")
     return st
 #print (dt_local())  
 
@@ -773,7 +773,7 @@ def dt_local_2():
     
     now = time.time()
        
-    st = datetime.datetime.fromtimestamp(now).strftime("%Y-%m-%d %I:%M:00 %p")
+    st = datetime.datetime.fromtimestamp(now).strftime("%I:%M")
     return st
 #print (dt_local())     
 ######################################################################################################################################################################################
