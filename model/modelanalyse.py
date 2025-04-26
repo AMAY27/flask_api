@@ -33,11 +33,11 @@ import pymongo
 from pymongo import MongoClient
 #from utils import log
 # mongodb://localhost:27017/
-myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-mydb = myclient["mydatabase"]
+#myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+#mydb = myclient["mydatabase"]
 import datetime 
 
-mycol = mydb["25thjan2024"]
+#mycol = mydb["25thjan2024"]
 
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True

@@ -20,7 +20,7 @@ app = Flask(__name__)
 config_type = os.environ.get('CONFIG_TYPE', 'config.DevelopmentConfig')
 app.config.from_object(config_type) 
 app = register_routes(app)
-socketio = SocketIO(app, async_mode='eventlet' ,cors_allowed_origins="*")
+socketio = SocketIO(app, async_handlers='eventlet',cors_allowed_origins="*")
 
 # rolling buffer for last 4 s of audio
 WINDOW_SECONDS = 5
