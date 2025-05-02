@@ -831,9 +831,9 @@ def record():
 
 def analyzeStream(model, threshold, clip_threshold, period=PERIOD, filename=None):
     # Check if the audio file already exists in the database
-    audio_file = mycol.find_one({'filename': filename})
-    if audio_file:
-        raise FileExistsError(f"Audio file with filename '{filename}' already exists in the database.")
+    #audio_file = mycol.find_one({'filename': filename})
+    #if audio_file:
+    #    raise FileExistsError(f"Audio file with filename '{filename}' already exists in the database.")
     
     # Time: using a starting point of 0 seconds relative to the recording
     start_time = time.time()
@@ -897,7 +897,7 @@ def analyzeStream(model, threshold, clip_threshold, period=PERIOD, filename=None
                 'timepoint': timepoint_str
             }
             print(pred)
-            mycol.insert_one(pred)
+            #mycol.insert_one(pred)
 
             label = AAL_CODE_dict_german[ci]
             p_final[f"{segment_index}_{ci}"] = {
