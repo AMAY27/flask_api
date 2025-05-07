@@ -773,7 +773,7 @@ def dt_local_2():
     
     now = time.time()
        
-    st = datetime.datetime.fromtimestamp(now).strftime("%I:%M")
+    st = datetime.datetime.fromtimestamp(now).strftime("%H:%M")
     return st
 #print (dt_local())     
 ######################################################################################################################################################################################
