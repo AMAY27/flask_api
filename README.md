@@ -1,8 +1,4 @@
-Here is the full content you can copy and paste directly into your `README.md` file:
 
----
-
-````markdown
 # Python Audio Processing Application
 
 This is a Python-based application designed for real-time audio stream analysis and event detection. The application is containerized using Docker and deployed with Gunicorn using the `eventlet` worker.
@@ -79,10 +75,6 @@ EXPOSE 5001
 
 CMD ["gunicorn", "-k", "eventlet", "-w", "1", "main:app", "--bind", "0.0.0.0:5001"]
 ```
-
-## 📜 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## 👤 Author
 
