@@ -9,6 +9,7 @@ from flask_socketio import SocketIO
 from io import BytesIO
 import os
 from routes import register_routes
+import time
 
 # replace these imports with wherever your model code lives
 from model.modelanalyselive import get_model, list_of_models, run_audio, SR
@@ -32,26 +33,42 @@ def on_connect():
     print('📡 Client connected:')
     socketio.emit('connected', {'msg': 'ready'})
 
-def _process_segment(segment):
+def _process_segment(segment, timestamp, start_time):
     """Background task: run model and emit."""
     try:
+        inference_start_time = time.time()
+
+        # Run the model to classify the audio
         result = run_audio((segment, SR))
+
+        # End measuring inference time
+        inference_end_time = time.time()
+        inference_time = inference_end_time - inference_start_time
+
+        # Measure round-trip latency (convert backend time to milliseconds)
+        end_time = time.time()  # Backend end time in seconds
+        round_trip_latency = (end_time * 1000) - timestamp  # Convert end_time to milliseconds and subtract frontend timestamp
+
+        # Send results and timing information back to the frontend
         socketio.emit('live_events', result)
+        print(f"Processed segment in {inference_time:.2f} seconds, round-trip latency: {round_trip_latency:.2f} seconds")
     except Exception as e:
         socketio.emit('live_events', {'error': str(e)})
 
 @socketio.on('audio_chunk')
 def on_chunk(raw_data):
     global _buffer
+    timestamp = raw_data['timestamp']
     # decode bytes → Float32Array
-    chunk = np.frombuffer(raw_data, dtype=np.float32)
+    chunk = np.frombuffer(raw_data['audio_data'], dtype=np.float32)
     _buffer = np.concatenate([_buffer, chunk])
 
     # as long as we have ≥5 s, slice off 5 s and launch inference
     if _buffer.shape[0] >= WINDOW_SAMPLES:
         segment = _buffer[:WINDOW_SAMPLES].copy()
         _buffer = _buffer[WINDOW_SAMPLES:]
-        socketio.start_background_task(_process_segment, segment)
+        start_time = time.time()
+        socketio.start_background_task(_process_segment, segment, timestamp, start_time)
 
 # @socketio.on('audio_chunk')
 # def on_chunk(raw_data):
