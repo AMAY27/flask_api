@@ -15,7 +15,13 @@ This is a Python-based application designed for real-time audio stream analysis 
 - Docker (recommended)
 - (Optional) Python 3.10+ if running locally
 
-## 🧱 Getting Started
+## 📦 Getting Started
+
+### 📥 1. Clone the Repository
+
+```bash
+git clone https://github.com/AMAY27/flask_api.git
+cd flask_api
 
 ### 🔧 Build the Docker Image
 
