@@ -43,6 +43,10 @@ torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(42)
+if torch.cuda.is_available():
+    print("GPU is available")
+else:
+    print("GPU is not available")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
