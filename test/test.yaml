@@ -1,0 +1,50 @@
+# config:
+#   target: 'ws://localhost:5001'  # WebSocket server URL (Flask backend)
+#   phases:
+#     - duration: 60  # Test duration in seconds (1 hour)
+#       arrivalRate: 1  # Number of new users to spawn per second (adjust as needed)
+#       name: "ramp-up"  # Phase name (for reporting purposes)
+
+# scenarios:
+#   - flow:
+#       - send:
+#           text: '{"audio_data": "PLACEHOLDER_AUDIO", "timestamp": "CURRENT_TIMESTAMP"}'  # Placeholder audio data
+#           # You can replace "PLACEHOLDER_AUDIO" with actual audio data (e.g., generate raw audio data or send mock data)
+#       - think: 2  # Delay between requests to simulate user thinking time
+
+# config:
+#   target: 'ws://localhost:5001'
+#   phases:
+#     - duration: 60
+#       arrivalRate: 1
+#       name: "ramp-up"
+ 
+# scenarios:
+#   - engine: ws
+#     name: Echo a string 1
+#     flow:
+#       - connect:
+#           target: 'ws://localhost:5001'
+#       - send:
+#           text: '{"audio_data": "PLACEHOLDER_AUDIO", "timestamp": "CURRENT_TIMESTAMP"}'
+
+config:
+  target: 'http://127.0.0.1:5001'  # Flask-SocketIO server URL (use HTTP for SocketIO)
+  socketio:
+    transports: ['websocket']  # Make sure to use WebSocket transport
+  phases:
+    - duration: 60  # Duration of the test (1 minute)
+      arrivalRate: 0.1  # Rate of users arriving (1 user per second)
+      name: "ramp-up"
+
+scenarios:
+  - name: 'Emit an event'
+    engine: socketio  # Use socketio engine in Artillery for testing
+    flow:
+      - connect: {}
+      - socketio:
+          emit: 'audio_chunk'  # Event name that the backend listens for
+          data:
+            audio_data: "PLACEHOLDER_AUDIO"  # Placeholder audio data
+            timestamp: "{{ timestamp() }}"  # Dynamically generate timestamp
+      - think: 10  # Simulate delay between requests (user thinking)

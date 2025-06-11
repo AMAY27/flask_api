@@ -2,6 +2,9 @@
 import eventlet
 eventlet.monkey_patch()
 
+#import psutil
+from threading import Thread
+
 import logging
 import numpy as np
 from flask import Flask
@@ -28,10 +31,12 @@ WINDOW_SECONDS = 5
 WINDOW_SAMPLES = SR * WINDOW_SECONDS
 _buffer = np.zeros(0, dtype=np.float32)
 
+
 @socketio.on('connect')
 def on_connect():
     print('📡 Client connected:')
     socketio.emit('connected', {'msg': 'ready'})
+
 
 def _process_segment(segment, timestamp, start_time):
     """Background task: run model and emit."""
@@ -46,12 +51,13 @@ def _process_segment(segment, timestamp, start_time):
         inference_time = inference_end_time - inference_start_time
 
         # Measure round-trip latency (convert backend time to milliseconds)
-        end_time = time.time()  # Backend end time in seconds
-        round_trip_latency = (end_time * 1000) - timestamp  # Convert end_time to milliseconds and subtract frontend timestamp
+        end_time = time.time() *1000  # Backend end time in seconds
+        round_trip_start_time = timestamp  # Frontend start time in seconds
+        round_trip_latency = (end_time - round_trip_start_time)/1000 # Convert end_time to milliseconds and subtract frontend timestamp 
 
         # Send results and timing information back to the frontend
         socketio.emit('live_events', result)
-        print(f"Processed segment in {inference_time:.2f} seconds, round-trip latency: {round_trip_latency:.2f} seconds")
+        # print(f"Processed segment in {inference_time:.2f} seconds, round-trip latency: {round_trip_latency:.2f} seconds")
     except Exception as e:
         socketio.emit('live_events', {'error': str(e)})
 
